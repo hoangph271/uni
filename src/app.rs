@@ -67,8 +67,8 @@ impl Application for AppModel {
         let mut nav = nav_bar::Model::default();
 
         nav.insert()
-            .text(fl!("page-id", num = 1))
-            .data::<Page>(Page::Page1)
+            .text(fl!("page-about-pc"))
+            .data::<Page>(Page::AboutPc)
             .icon(icon::from_name("applications-science-symbolic"))
             .activate();
 
@@ -147,13 +147,24 @@ impl Application for AppModel {
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
-        widget::text::title1(fl!("welcome"))
-            .apply(widget::container)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
-            .into()
+        widget::container(
+            widget::column()
+                .push(
+                    widget::text::title1(fl!("welcome"))
+                        .apply(widget::container)
+                        .width(Length::Fill)
+                        .align_x(Horizontal::Center),
+                )
+                .push(widget::text::monotext(format!(
+                    "{} - {}",
+                    std::env::consts::OS,
+                    std::env::consts::ARCH
+                )))
+                .spacing(theme::active().cosmic().space_m())
+                .align_x(Alignment::Center),
+        )
+        .center(cosmic::iced_core::Length::Fill)
+        .into()
     }
 
     /// Register subscriptions for this application.
@@ -178,9 +189,9 @@ impl Application for AppModel {
             self.core()
                 .watch_config::<Config>(Self::APP_ID)
                 .map(|update| {
-                    // for why in update.errors {
-                    //     tracing::error!(?why, "app config error");
-                    // }
+                    for why in update.errors {
+                        tracing::error!(?why, "app config error");
+                    }
 
                     Message::UpdateConfig(update.config)
                 }),
@@ -289,7 +300,7 @@ impl AppModel {
 
 /// The page to display in the application.
 pub enum Page {
-    Page1,
+    AboutPc,
     Page2,
     Page3,
 }
