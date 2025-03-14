@@ -4,7 +4,7 @@ use crate::config::Config;
 use crate::fl;
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
-use cosmic::iced::alignment::{Horizontal, Vertical};
+use cosmic::iced::alignment::Horizontal;
 use cosmic::iced::{Alignment, Length, Subscription};
 use cosmic::widget::{self, icon, menu, nav_bar};
 use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
@@ -35,6 +35,7 @@ pub enum Message {
     OpenRepositoryUrl,
     SubscriptionChannel,
     ToggleContextPage(ContextPage),
+    ToggleSettingsPage,
     UpdateConfig(Config),
     LaunchUrl(String),
 }
@@ -115,7 +116,10 @@ impl Application for AppModel {
             menu::root(fl!("view")),
             menu::items(
                 &self.key_binds,
-                vec![menu::Item::Button(fl!("about"), None, MenuAction::About)],
+                vec![
+                    menu::Item::Button(fl!("about"), None, MenuAction::About),
+                    menu::Item::Button(fl!("settings"), None, MenuAction::Settings),
+                ],
             ),
         )]);
 
@@ -223,6 +227,10 @@ impl Application for AppModel {
                 }
             }
 
+            Message::ToggleSettingsPage => {
+                todo!("Implement open settings page")
+            }
+
             Message::UpdateConfig(config) => {
                 self.config = config;
             }
@@ -315,6 +323,7 @@ pub enum ContextPage {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MenuAction {
     About,
+    Settings,
 }
 
 impl menu::action::MenuAction for MenuAction {
@@ -323,6 +332,7 @@ impl menu::action::MenuAction for MenuAction {
     fn message(&self) -> Self::Message {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
+            MenuAction::Settings => Message::ToggleSettingsPage,
         }
     }
 }
