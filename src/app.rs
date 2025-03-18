@@ -35,7 +35,6 @@ pub enum Message {
     OpenRepositoryUrl,
     SubscriptionChannel,
     ToggleContextPage(ContextPage),
-    ToggleSettingsPage,
     UpdateConfig(Config),
     LaunchUrl(String),
 }
@@ -143,6 +142,11 @@ impl Application for AppModel {
                 Message::ToggleContextPage(ContextPage::About),
             )
             .title(fl!("about")),
+            ContextPage::Settings => context_drawer::context_drawer(
+                self.settings(),
+                Message::ToggleContextPage(ContextPage::Settings),
+            )
+            .title(fl!("settings")),
         })
     }
 
@@ -213,7 +217,7 @@ impl Application for AppModel {
             }
 
             Message::SubscriptionChannel => {
-                // For example purposes only.
+                tracing::error!("SubscriptionChannel")
             }
 
             Message::ToggleContextPage(context_page) => {
@@ -225,10 +229,6 @@ impl Application for AppModel {
                     self.context_page = context_page;
                     self.core.window.show_context = true;
                 }
-            }
-
-            Message::ToggleSettingsPage => {
-                todo!("Implement open settings page")
             }
 
             Message::UpdateConfig(config) => {
@@ -255,7 +255,6 @@ impl Application for AppModel {
 }
 
 impl AppModel {
-    /// The about page for this app.
     pub fn about(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
@@ -289,6 +288,10 @@ impl AppModel {
             .into()
     }
 
+    pub fn settings(&self) -> Element<Message> {
+        widget::column().push(widget::text(fl!("settings"))).into()
+    }
+
     /// Updates the header and window titles.
     pub fn update_title(&mut self) -> Task<Message> {
         let mut window_title = fl!("app-title");
@@ -318,6 +321,7 @@ pub enum Page {
 pub enum ContextPage {
     #[default]
     About,
+    Settings,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -332,7 +336,7 @@ impl menu::action::MenuAction for MenuAction {
     fn message(&self) -> Self::Message {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
-            MenuAction::Settings => Message::ToggleSettingsPage,
+            MenuAction::Settings => Message::ToggleContextPage(ContextPage::Settings),
         }
     }
 }
