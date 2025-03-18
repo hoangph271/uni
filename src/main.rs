@@ -6,6 +6,7 @@ use tracing_subscriber::FmtSubscriber;
 mod app;
 mod config;
 mod i18n;
+mod locale;
 
 fn main() -> cosmic::iced::Result {
     let subscriber = FmtSubscriber::builder()

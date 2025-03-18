@@ -6,3 +6,4 @@ welcome = Welcome to COSMIC...! ✨
 page-id = Page #{ $num }
 page-about-pc = About PC
 git-description = Git commit {$hash} on {$date}
+system-time-na = System time: N/A

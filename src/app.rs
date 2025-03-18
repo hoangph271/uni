@@ -2,6 +2,7 @@
 
 use crate::config::Config;
 use crate::fl;
+use crate::locale::get_locale;
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::Horizontal;
@@ -174,9 +175,9 @@ impl Application for AppModel {
                 )))
                 .push(widget::text::monotext(
                     if let Some(system_time) = self.system_time {
-                        system_time.to_rfc3339()
+                        system_time.format_localized("%T", get_locale()).to_string()
                     } else {
-                        "System time: N/A".to_string()
+                        fl!("system-time-na")
                     },
                 ))
                 .spacing(theme::active().cosmic().space_m())
@@ -203,7 +204,7 @@ impl Application for AppModel {
                         let interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
                         let mut stream = tokio_stream::wrappers::IntervalStream::new(interval);
 
-                        while let Some(_) = stream.next().await {
+                        while stream.next().await.is_some() {
                             let system_time = chrono::Utc::now();
 
                             _ = channel.send(Message::SystemTimeTick(system_time)).await;
@@ -272,6 +273,7 @@ impl Application for AppModel {
     }
 }
 
+#[allow(clippy::unused_self)]
 impl AppModel {
     pub fn about(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
