@@ -1,5 +1,5 @@
-use tracing::Level;
 // SPDX-License-Identifier: MPL-2.0
+use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 mod app;

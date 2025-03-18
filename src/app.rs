@@ -27,13 +27,15 @@ pub struct AppModel {
     key_binds: HashMap<menu::KeyBind, MenuAction>,
     // Configuration data that persists between application runs.
     config: Config,
+    // ? Application specific fields
+    system_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
     OpenRepositoryUrl,
-    SubscriptionChannel,
+    SystemTimeTick,
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
     LaunchUrl(String),
@@ -101,6 +103,7 @@ impl Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
+            system_time: None,
         };
 
         // Create a startup command that sets the window title.
@@ -168,6 +171,13 @@ impl Application for AppModel {
                     std::env::consts::OS,
                     std::env::consts::ARCH
                 )))
+                .push(widget::text::monotext(
+                    if let Some(system_time) = self.system_time {
+                        system_time.to_rfc3339()
+                    } else {
+                        "System time: N/A".to_string()
+                    },
+                ))
                 .spacing(theme::active().cosmic().space_m())
                 .align_x(Alignment::Center),
         )
@@ -190,7 +200,7 @@ impl Application for AppModel {
                 cosmic::iced::stream::channel(
                     std::mem::size_of::<Message>(),
                     move |mut channel| async move {
-                        _ = channel.send(Message::SubscriptionChannel).await;
+                        _ = channel.send(Message::SystemTimeTick).await;
 
                         // futures_util::future::pending().await
                     },
@@ -219,8 +229,9 @@ impl Application for AppModel {
                 _ = open::that_detached(REPOSITORY);
             }
 
-            Message::SubscriptionChannel => {
-                tracing::info!("SubscriptionChannel")
+            Message::SystemTimeTick => {
+                // TODO: update this every second
+                self.system_time = Some(chrono::Utc::now());
             }
 
             Message::ToggleContextPage(context_page) => {
