@@ -10,6 +10,7 @@ use cosmic::widget::{self, icon, menu, nav_bar};
 use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
 use futures_util::SinkExt;
 use std::collections::HashMap;
+use tokio_stream::StreamExt;
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
@@ -35,7 +36,7 @@ pub struct AppModel {
 #[derive(Debug, Clone)]
 pub enum Message {
     OpenRepositoryUrl,
-    SystemTimeTick,
+    SystemTimeTick(chrono::DateTime<chrono::Utc>),
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
     LaunchUrl(String),
@@ -191,18 +192,24 @@ impl Application for AppModel {
     /// emit messages to the application through a channel. They are started at the
     /// beginning of the application, and persist through its lifetime.
     fn subscription(&self) -> Subscription<Self::Message> {
-        struct UniSubscription;
+        struct SystemTimeTickSubscription;
 
         Subscription::batch(vec![
-            // Create a subscription which emits updates through a channel.
             Subscription::run_with_id(
-                std::any::TypeId::of::<UniSubscription>(),
+                std::any::TypeId::of::<SystemTimeTickSubscription>(),
                 cosmic::iced::stream::channel(
                     std::mem::size_of::<Message>(),
                     move |mut channel| async move {
-                        _ = channel.send(Message::SystemTimeTick).await;
+                        let interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+                        let mut stream = tokio_stream::wrappers::IntervalStream::new(interval);
 
-                        // futures_util::future::pending().await
+                        while let Some(_) = stream.next().await {
+                            let system_time = chrono::Utc::now();
+
+                            _ = channel
+                                .send(Message::SystemTimeTick(system_time)
+                                .await;
+                        }
                     },
                 ),
             ),
@@ -229,9 +236,8 @@ impl Application for AppModel {
                 _ = open::that_detached(REPOSITORY);
             }
 
-            Message::SystemTimeTick => {
-                // TODO: update this every second
-                self.system_time = Some(chrono::Utc::now());
+            Message::SystemTimeTick(time) => {
+                self.system_time = Some(time);
             }
 
             Message::ToggleContextPage(context_page) => {

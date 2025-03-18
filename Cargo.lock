@@ -5003,6 +5003,7 @@ dependencies = [
  "open",
  "rust-embed",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
  "vergen",
