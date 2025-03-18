@@ -206,9 +206,7 @@ impl Application for AppModel {
                         while let Some(_) = stream.next().await {
                             let system_time = chrono::Utc::now();
 
-                            _ = channel
-                                .send(Message::SystemTimeTick(system_time)
-                                .await;
+                            _ = channel.send(Message::SystemTimeTick(system_time)).await;
                         }
                     },
                 ),
