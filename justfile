@@ -54,9 +54,8 @@ check *args:
 # Runs a clippy check with JSON message format
 check-json: (check '--message-format=json')
 
-# Run the application for testing purposes
 run *args:
-    env RUST_BACKTRACE=full cargo run --release {{args}}
+    env RUST_BACKTRACE=full cargo run {{args}}
 
 # Installs files
 install:
@@ -93,4 +92,3 @@ vendor:
 vendor-extract:
     rm -rf vendor
     tar pxf vendor.tar
-
