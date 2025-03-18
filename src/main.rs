@@ -1,10 +1,18 @@
+use tracing::Level;
 // SPDX-License-Identifier: MPL-2.0
+use tracing_subscriber::FmtSubscriber;
 
 mod app;
 mod config;
 mod i18n;
 
 fn main() -> cosmic::iced::Result {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::DEBUG)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     // Get the system's preferred languages.
     let requested_languages = i18n_embed::DesktopLanguageRequester::requested_languages();
 

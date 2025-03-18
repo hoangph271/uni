@@ -181,17 +181,20 @@ impl Application for AppModel {
     /// emit messages to the application through a channel. They are started at the
     /// beginning of the application, and persist through its lifetime.
     fn subscription(&self) -> Subscription<Self::Message> {
-        struct MySubscription;
+        struct UniSubscription;
 
         Subscription::batch(vec![
             // Create a subscription which emits updates through a channel.
             Subscription::run_with_id(
-                std::any::TypeId::of::<MySubscription>(),
-                cosmic::iced::stream::channel(4, move |mut channel| async move {
-                    _ = channel.send(Message::SubscriptionChannel).await;
+                std::any::TypeId::of::<UniSubscription>(),
+                cosmic::iced::stream::channel(
+                    std::mem::size_of::<Message>(),
+                    move |mut channel| async move {
+                        _ = channel.send(Message::SubscriptionChannel).await;
 
-                    futures_util::future::pending().await
-                }),
+                        // futures_util::future::pending().await
+                    },
+                ),
             ),
             // Watch for application configuration changes.
             self.core()
@@ -217,7 +220,7 @@ impl Application for AppModel {
             }
 
             Message::SubscriptionChannel => {
-                tracing::error!("SubscriptionChannel")
+                tracing::info!("SubscriptionChannel")
             }
 
             Message::ToggleContextPage(context_page) => {
