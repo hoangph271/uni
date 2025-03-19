@@ -9,7 +9,6 @@ use cosmic::iced::{Alignment, Subscription};
 use cosmic::widget::{self, icon, menu, nav_bar};
 use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Element};
 use std::collections::HashMap;
-use tokio_stream::StreamExt;
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
@@ -37,11 +36,10 @@ pub struct AppModel {
 #[derive(Debug, Clone)]
 pub enum Message {
     OpenRepositoryUrl,
-    // SystemTimeTick(chrono::DateTime<chrono::Utc>),
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
     LaunchUrl(String),
-    PageMessage(pages::Message),
+    Page(pages::Message),
 }
 
 /// Create a COSMIC application from the app model
@@ -162,7 +160,7 @@ impl Application for AppModel {
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
-        self.about_pc_page.view()
+        self.about_pc_page.view().map(Into::into)
     }
 
     /// Register subscriptions for this application.
@@ -171,25 +169,8 @@ impl Application for AppModel {
     /// emit messages to the application through a channel. They are started at the
     /// beginning of the application, and persist through its lifetime.
     fn subscription(&self) -> Subscription<Self::Message> {
-        struct SystemTimeTickSubscription;
-
         Subscription::batch(vec![
-            Subscription::run_with_id(
-                std::any::TypeId::of::<SystemTimeTickSubscription>(),
-                cosmic::iced::stream::channel(
-                    std::mem::size_of::<Message>(),
-                    move |mut channel| async move {
-                        let interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-                        let mut stream = tokio_stream::wrappers::IntervalStream::new(interval);
-
-                        while stream.next().await.is_some() {
-                            // let system_time = chrono::Utc::now();
-
-                            // _ = channel.send(Message::SystemTimeTick(system_time)).await;
-                        }
-                    },
-                ),
-            ),
+            self.about_pc_page.subscription().map(Into::into),
             // Watch for application configuration changes.
             self.core()
                 .watch_config::<Config>(Self::APP_ID)
@@ -212,10 +193,6 @@ impl Application for AppModel {
             Message::OpenRepositoryUrl => {
                 _ = open::that_detached(REPOSITORY);
             }
-
-            // Message::SystemTimeTick(time) => {
-            //     self.system_time = Some(time);
-            // }
             Message::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
                     // Close the context drawer if the toggled context page is the same.
@@ -226,15 +203,18 @@ impl Application for AppModel {
                     self.core.window.show_context = true;
                 }
             }
-
             Message::UpdateConfig(config) => {
                 self.config = config;
             }
-
             Message::LaunchUrl(url) => match open::that_detached(&url) {
                 Ok(()) => {}
                 Err(err) => {
                     eprintln!("failed to open {url:?}: {err}");
+                }
+            },
+            Message::Page(message) => match message {
+                pages::Message::AboutPc(about_pc_page_message) => {
+                    let _ = self.about_pc_page.update(&about_pc_page_message);
                 }
             },
         }
