@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::config::Config;
-use crate::fl;
-use crate::locale::get_locale;
+use crate::pages::about_pc;
+use crate::{fl, pages};
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
-use cosmic::iced::alignment::Horizontal;
-use cosmic::iced::{Alignment, Length, Subscription};
+use cosmic::iced::{Alignment, Subscription};
 use cosmic::widget::{self, icon, menu, nav_bar};
-use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
-use futures_util::SinkExt;
+use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Element};
 use std::collections::HashMap;
 use tokio_stream::StreamExt;
 
@@ -29,18 +27,21 @@ pub struct AppModel {
     key_binds: HashMap<menu::KeyBind, MenuAction>,
     // Configuration data that persists between application runs.
     config: Config,
-    // ? Application specific fields
-    system_time: Option<chrono::DateTime<chrono::Utc>>,
+    //#region Application specific fields
+    // ? Pages
+    about_pc_page: about_pc::AboutPcPage,
+    //#endregion
 }
 
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
     OpenRepositoryUrl,
-    SystemTimeTick(chrono::DateTime<chrono::Utc>),
+    // SystemTimeTick(chrono::DateTime<chrono::Utc>),
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
     LaunchUrl(String),
+    PageMessage(pages::Message),
 }
 
 /// Create a COSMIC application from the app model
@@ -105,7 +106,8 @@ impl Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
-            system_time: None,
+            // system_time: None,
+            about_pc_page: about_pc::AboutPcPage::new(),
         };
 
         // Create a startup command that sets the window title.
@@ -160,31 +162,32 @@ impl Application for AppModel {
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
-        widget::container(
-            widget::column()
-                .push(
-                    widget::text::title1(fl!("welcome"))
-                        .apply(widget::container)
-                        .width(Length::Fill)
-                        .align_x(Horizontal::Center),
-                )
-                .push(widget::text::monotext(format!(
-                    "{} - {}",
-                    std::env::consts::OS,
-                    std::env::consts::ARCH
-                )))
-                .push(widget::text::monotext(
-                    if let Some(system_time) = self.system_time {
-                        system_time.format_localized("%T", get_locale()).to_string()
-                    } else {
-                        fl!("system-time-na")
-                    },
-                ))
-                .spacing(theme::active().cosmic().space_m())
-                .align_x(Alignment::Center),
-        )
-        .center(cosmic::iced_core::Length::Fill)
-        .into()
+        self.about_pc_page.view()
+        // widget::container(
+        //     widget::column()
+        //         .push(
+        //             widget::text::title1(fl!("welcome"))
+        //                 .apply(widget::container)
+        //                 .width(Length::Fill)
+        //                 .align_x(Horizontal::Center),
+        //         )
+        //         .push(widget::text::monotext(format!(
+        //             "{} - {}",
+        //             std::env::consts::OS,
+        //             std::env::consts::ARCH
+        //         )))
+        //         .push(widget::text::monotext(
+        //             if let Some(system_time) = self.system_time {
+        //                 system_time.format_localized("%T", get_locale()).to_string()
+        //             } else {
+        //                 fl!("system-time-na")
+        //             },
+        //         ))
+        //         .spacing(theme::active().cosmic().space_m())
+        //         .align_x(Alignment::Center),
+        // )
+        // .center(cosmic::iced_core::Length::Fill)
+        // .into()
     }
 
     /// Register subscriptions for this application.
@@ -205,9 +208,9 @@ impl Application for AppModel {
                         let mut stream = tokio_stream::wrappers::IntervalStream::new(interval);
 
                         while stream.next().await.is_some() {
-                            let system_time = chrono::Utc::now();
+                            // let system_time = chrono::Utc::now();
 
-                            _ = channel.send(Message::SystemTimeTick(system_time)).await;
+                            // _ = channel.send(Message::SystemTimeTick(system_time)).await;
                         }
                     },
                 ),
@@ -235,10 +238,9 @@ impl Application for AppModel {
                 _ = open::that_detached(REPOSITORY);
             }
 
-            Message::SystemTimeTick(time) => {
-                self.system_time = Some(time);
-            }
-
+            // Message::SystemTimeTick(time) => {
+            //     self.system_time = Some(time);
+            // }
             Message::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
                     // Close the context drawer if the toggled context page is the same.
