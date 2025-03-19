@@ -104,7 +104,6 @@ impl Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
-            // system_time: None,
             about_pc_page: about_pc::AboutPcPage::new(),
         };
 
