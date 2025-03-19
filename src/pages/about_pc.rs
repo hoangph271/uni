@@ -1,4 +1,3 @@
-use crate::app::Message as AppMessage;
 use crate::fl;
 use crate::locale::get_locale;
 use chrono::{DateTime, Utc};
@@ -19,7 +18,7 @@ impl AboutPcPage {
         Self { system_time: None }
     }
 
-    pub fn view(&self) -> cosmic::Element<AppMessage> {
+    pub fn view(&self) -> cosmic::Element<AboutPcPageMessage> {
         widget::container(
             widget::column()
                 .push(

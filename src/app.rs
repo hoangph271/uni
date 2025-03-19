@@ -163,31 +163,6 @@ impl Application for AppModel {
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
         self.about_pc_page.view()
-        // widget::container(
-        //     widget::column()
-        //         .push(
-        //             widget::text::title1(fl!("welcome"))
-        //                 .apply(widget::container)
-        //                 .width(Length::Fill)
-        //                 .align_x(Horizontal::Center),
-        //         )
-        //         .push(widget::text::monotext(format!(
-        //             "{} - {}",
-        //             std::env::consts::OS,
-        //             std::env::consts::ARCH
-        //         )))
-        //         .push(widget::text::monotext(
-        //             if let Some(system_time) = self.system_time {
-        //                 system_time.format_localized("%T", get_locale()).to_string()
-        //             } else {
-        //                 fl!("system-time-na")
-        //             },
-        //         ))
-        //         .spacing(theme::active().cosmic().space_m())
-        //         .align_x(Alignment::Center),
-        // )
-        // .center(cosmic::iced_core::Length::Fill)
-        // .into()
     }
 
     /// Register subscriptions for this application.
