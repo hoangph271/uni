@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::config::Config;
-use crate::pages::about_pc;
 use crate::{fl, pages};
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
@@ -28,7 +27,8 @@ pub struct AppModel {
     config: Config,
     //#region Application specific fields
     // ? Pages
-    about_pc_page: about_pc::AboutPcPage,
+    about_pc_page: pages::about_pc::AboutPcPage,
+    clock_page: pages::clock::ClockPage,
     //#endregion
 }
 
@@ -76,9 +76,9 @@ impl Application for AppModel {
             .activate();
 
         nav.insert()
-            .text(fl!("page-id", num = 2))
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
+            .text(fl!("page-clock"))
+            .data::<Page>(Page::Clock)
+            .icon(icon::from_name("applications-office-symbolic"));
 
         nav.insert()
             .text(fl!("page-id", num = 3))
@@ -104,7 +104,8 @@ impl Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
-            about_pc_page: about_pc::AboutPcPage::new(),
+            about_pc_page: pages::about_pc::AboutPcPage::new(),
+            clock_page: pages::clock::ClockPage::new(),
         };
 
         // Create a startup command that sets the window title.
@@ -159,7 +160,15 @@ impl Application for AppModel {
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
-        self.about_pc_page.view().map(Into::into)
+        match self.nav.active_data::<Page>() {
+            Some(page) => match page {
+                Page::AboutPc => self.about_pc_page.view().map(Into::into),
+                // TODO: impl the Clock & Page3
+                Page::Clock => self.clock_page.view().map(Into::into),
+                Page::Page3 => todo!(),
+            },
+            None => self.about_pc_page.view().map(Into::into),
+        }
     }
 
     /// Register subscriptions for this application.
@@ -169,7 +178,7 @@ impl Application for AppModel {
     /// beginning of the application, and persist through its lifetime.
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::batch(vec![
-            self.about_pc_page.subscription().map(Into::into),
+            self.clock_page.subscription().map(Into::into),
             // Watch for application configuration changes.
             self.core()
                 .watch_config::<Config>(Self::APP_ID)
@@ -214,6 +223,9 @@ impl Application for AppModel {
             Message::Page(message) => match message {
                 pages::Message::AboutPc(about_pc_page_message) => {
                     let _ = self.about_pc_page.update(&about_pc_page_message);
+                }
+                pages::Message::Clock(clock_page_message) => {
+                    let _ = self.clock_page.update(&clock_page_message);
                 }
             },
         }
@@ -286,9 +298,10 @@ impl AppModel {
 }
 
 /// The page to display in the application.
+#[derive(Debug)]
 pub enum Page {
     AboutPc,
-    Page2,
+    Clock,
     Page3,
 }
 
