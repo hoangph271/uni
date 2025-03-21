@@ -178,6 +178,7 @@ impl Application for AppModel {
     /// beginning of the application, and persist through its lifetime.
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::batch(vec![
+            self.about_pc_page.subscription().map(Into::into),
             self.clock_page.subscription().map(Into::into),
             // Watch for application configuration changes.
             self.core()
@@ -222,10 +223,10 @@ impl Application for AppModel {
             },
             Message::Page(message) => match message {
                 pages::Message::AboutPc(about_pc_page_message) => {
-                    let _ = self.about_pc_page.update(&about_pc_page_message);
+                    _ = self.about_pc_page.update(about_pc_page_message);
                 }
                 pages::Message::Clock(clock_page_message) => {
-                    let _ = self.clock_page.update(&clock_page_message);
+                    _ = self.clock_page.update(&clock_page_message);
                 }
             },
         }

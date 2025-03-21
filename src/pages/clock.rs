@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use cosmic::{
-    iced::{Alignment, Length, Subscription},
+    iced::{Length, Subscription},
     widget, Element, Task,
 };
 use futures_util::SinkExt as _;
