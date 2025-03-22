@@ -8,6 +8,7 @@ use tokio_stream::StreamExt as _;
 
 use crate::{app, fl, locale::get_locale, pages};
 
+#[derive(Default)]
 pub struct ClockPage {
     pub system_time: Option<DateTime<Utc>>,
 }
@@ -24,12 +25,8 @@ impl From<ClockPageMessage> for app::Message {
 }
 
 #[allow(clippy::unused_self)]
-impl ClockPage {
-    pub fn new() -> Self {
-        Self { system_time: None }
-    }
-
-    pub fn view(&self) -> Element<ClockPageMessage> {
+impl pages::IPage<ClockPageMessage> for ClockPage {
+    fn view(&self) -> Element<ClockPageMessage> {
         widget::container(widget::column().push(widget::text::monotext(
             if let Some(system_time) = self.system_time {
                 system_time.format_localized("%T", get_locale()).to_string()
@@ -41,17 +38,17 @@ impl ClockPage {
         .into()
     }
 
-    pub fn update(&mut self, message: &ClockPageMessage) -> Task<ClockPageMessage> {
+    fn update(&mut self, message: ClockPageMessage) -> Task<ClockPageMessage> {
         match message {
             ClockPageMessage::SystemTimeTick(date_time) => {
-                self.system_time = Some(*date_time);
+                self.system_time = Some(date_time);
             }
         }
 
         Task::none()
     }
 
-    pub fn subscription(&self) -> Subscription<ClockPageMessage> {
+    fn subscription(&self) -> Subscription<ClockPageMessage> {
         struct SystemTimeTickSubscription;
 
         Subscription::run_with_id(

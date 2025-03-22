@@ -1,6 +1,10 @@
 # Uni
 
-An application for the COSMIC™ desktop
+Just learning how to build a desktop application with `libcosmic`
+
+## TODOs:
+- [ ] Custom theme (color, fonts) using a [`.ron` file](https://github.com/ron-rs/ron)
+- [ ] Configuration page
 
 ## Installation
 

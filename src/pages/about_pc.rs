@@ -28,14 +28,8 @@ impl From<AboutPcPageMessage> for app::Message {
 }
 
 #[allow(clippy::unused_self)]
-impl AboutPcPage {
-    pub fn new() -> Self {
-        Self {
-            ..Default::default()
-        }
-    }
-
-    pub fn view(&self) -> cosmic::Element<AboutPcPageMessage> {
+impl pages::IPage<AboutPcPageMessage> for AboutPcPage {
+    fn view(&self) -> cosmic::Element<AboutPcPageMessage> {
         widget::container(
             widget::column()
                 .push(
@@ -65,7 +59,7 @@ impl AboutPcPage {
         .into()
     }
 
-    pub fn subscription(&self) -> Subscription<AboutPcPageMessage> {
+    fn subscription(&self) -> Subscription<AboutPcPageMessage> {
         struct WhoamiSubscription;
 
         Subscription::run_with_id(
@@ -85,7 +79,7 @@ impl AboutPcPage {
         )
     }
 
-    pub fn update(&mut self, message: AboutPcPageMessage) -> Task<AboutPcPageMessage> {
+    fn update(&mut self, message: AboutPcPageMessage) -> Task<AboutPcPageMessage> {
         match message {
             AboutPcPageMessage::FetchedRealname(realname) => {
                 self.realname = Some(realname);

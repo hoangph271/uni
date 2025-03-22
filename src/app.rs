@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::config::Config;
+use crate::pages::IPage as _;
 use crate::{fl, pages};
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
@@ -29,6 +30,7 @@ pub struct AppModel {
     // ? Pages
     about_pc_page: pages::about_pc::AboutPcPage,
     clock_page: pages::clock::ClockPage,
+    config_page: pages::config::ConfigPage,
     //#endregion
 }
 
@@ -82,7 +84,7 @@ impl Application for AppModel {
 
         nav.insert()
             .text(fl!("page-id", num = 3))
-            .data::<Page>(Page::Page3)
+            .data::<Page>(Page::Config)
             .icon(icon::from_name("applications-games-symbolic"));
 
         // Construct the app model with the runtime's core.
@@ -104,8 +106,9 @@ impl Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
-            about_pc_page: pages::about_pc::AboutPcPage::new(),
-            clock_page: pages::clock::ClockPage::new(),
+            about_pc_page: pages::about_pc::AboutPcPage::default(),
+            clock_page: pages::clock::ClockPage::default(),
+            config_page: pages::config::ConfigPage::default(),
         };
 
         // Create a startup command that sets the window title.
@@ -163,9 +166,8 @@ impl Application for AppModel {
         match self.nav.active_data::<Page>() {
             Some(page) => match page {
                 Page::AboutPc => self.about_pc_page.view().map(Into::into),
-                // TODO: impl the Clock & Page3
                 Page::Clock => self.clock_page.view().map(Into::into),
-                Page::Page3 => todo!(),
+                Page::Config => self.config_page.view().map(Into::into),
             },
             None => self.about_pc_page.view().map(Into::into),
         }
@@ -226,7 +228,10 @@ impl Application for AppModel {
                     _ = self.about_pc_page.update(about_pc_page_message);
                 }
                 pages::Message::Clock(clock_page_message) => {
-                    _ = self.clock_page.update(&clock_page_message);
+                    _ = self.clock_page.update(clock_page_message);
+                }
+                pages::Message::Config(config_page_message) => {
+                    _ = self.config_page.update(config_page_message);
                 }
             },
         }
@@ -303,7 +308,7 @@ impl AppModel {
 pub enum Page {
     AboutPc,
     Clock,
-    Page3,
+    Config,
 }
 
 /// The context page to display in the context drawer.
