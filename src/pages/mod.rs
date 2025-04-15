@@ -1,6 +1,6 @@
 pub mod about_pc;
 pub mod clock;
-pub mod config;
+pub mod preferences;
 
 use crate::app;
 
@@ -16,7 +16,7 @@ pub trait IPage<T>: Default {
 pub enum Message {
     AboutPc(about_pc::AboutPcPageMessage),
     Clock(clock::ClockPageMessage),
-    Config(config::ConfigPageMessage),
+    Preferences(preferences::PreferencesPageMessage),
 }
 
 impl From<Message> for app::Message {
