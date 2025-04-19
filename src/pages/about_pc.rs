@@ -1,21 +1,24 @@
 use crate::fl;
-use crate::locale::get_locale;
 use crate::{app, pages};
-use chrono::{DateTime, Utc};
 use cosmic::iced::Subscription;
-use cosmic::iced::{alignment::Horizontal, Alignment, Length};
-use cosmic::theme;
 use cosmic::widget;
+use cosmic::{
+    iced::{alignment::Horizontal, Alignment, Length},
+    theme,
+};
 use cosmic::{prelude::*, Task};
-use futures_util::{SinkExt as _, StreamExt as _};
+use futures_util::SinkExt as _;
 
+#[derive(Default)]
 pub struct AboutPcPage {
-    pub system_time: Option<DateTime<Utc>>,
+    realname: Option<String>,
+    distro: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub enum AboutPcPageMessage {
-    SystemTimeTick(DateTime<Utc>),
+    FetchedRealname(String),
+    FetchedDistro(String),
 }
 
 impl From<AboutPcPageMessage> for app::Message {
@@ -25,32 +28,30 @@ impl From<AboutPcPageMessage> for app::Message {
 }
 
 #[allow(clippy::unused_self)]
-impl AboutPcPage {
-    pub fn new() -> Self {
-        Self { system_time: None }
-    }
-
-    pub fn view(&self) -> cosmic::Element<AboutPcPageMessage> {
+impl pages::IPage<AboutPcPageMessage> for AboutPcPage {
+    fn view(&self) -> cosmic::Element<AboutPcPageMessage> {
         widget::container(
             widget::column()
                 .push(
-                    widget::text::title1(fl!("welcome"))
-                        .apply(widget::container)
-                        .width(Length::Fill)
-                        .align_x(Horizontal::Center),
+                    widget::text::title1(if let Some(realname) = &self.realname {
+                        fl!("welcome-user", name = realname)
+                    } else {
+                        fl!("welcome")
+                    })
+                    .apply(widget::container)
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Center),
+                )
+                .push_maybe(
+                    self.distro
+                        .as_ref()
+                        .map(|distro| widget::text::monotext(distro).size(24)),
                 )
                 .push(widget::text::monotext(format!(
                     "{} - {}",
                     std::env::consts::OS,
                     std::env::consts::ARCH
                 )))
-                .push(widget::text::monotext(
-                    if let Some(system_time) = self.system_time {
-                        system_time.format_localized("%T", get_locale()).to_string()
-                    } else {
-                        fl!("system-time-na")
-                    },
-                ))
                 .spacing(theme::active().cosmic().space_m())
                 .align_x(Alignment::Center),
         )
@@ -58,36 +59,33 @@ impl AboutPcPage {
         .into()
     }
 
-    pub fn update(&mut self, message: &AboutPcPageMessage) -> Task<AboutPcPageMessage> {
-        match message {
-            AboutPcPageMessage::SystemTimeTick(date_time) => {
-                self.system_time = Some(*date_time);
-            }
-        }
-
-        Task::none()
-    }
-
-    pub fn subscription(&self) -> Subscription<AboutPcPageMessage> {
-        struct SystemTimeTickSubscription;
+    fn subscription(&self) -> Subscription<AboutPcPageMessage> {
+        struct WhoamiSubscription;
 
         Subscription::run_with_id(
-            std::any::TypeId::of::<SystemTimeTickSubscription>(),
+            std::any::TypeId::of::<WhoamiSubscription>(),
             cosmic::iced::stream::channel(
                 std::mem::size_of::<AboutPcPageMessage>(),
                 move |mut channel| async move {
-                    let interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-                    let mut stream = tokio_stream::wrappers::IntervalStream::new(interval);
+                    _ = channel
+                        .feed(AboutPcPageMessage::FetchedRealname(whoami::realname()))
+                        .await;
 
-                    while stream.next().await.is_some() {
-                        let system_time = chrono::Utc::now();
-
-                        _ = channel
-                            .send(AboutPcPageMessage::SystemTimeTick(system_time))
-                            .await;
-                    }
+                    _ = channel
+                        .feed(AboutPcPageMessage::FetchedDistro(whoami::distro()))
+                        .await;
                 },
             ),
         )
+    }
+
+    fn update(&mut self, message: AboutPcPageMessage) -> Task<AboutPcPageMessage> {
+        match message {
+            AboutPcPageMessage::FetchedRealname(realname) => {
+                self.realname = Some(realname);
+            }
+            AboutPcPageMessage::FetchedDistro(distro) => self.distro = Some(distro),
+        }
+        Task::none()
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::config::Config;
-use crate::pages::about_pc;
+use crate::config::{self, UniConfig};
+use crate::pages::IPage as _;
 use crate::{fl, pages};
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
@@ -24,11 +24,14 @@ pub struct AppModel {
     nav: nav_bar::Model,
     /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
+    config_handler: Option<cosmic_config::Config>,
     // Configuration data that persists between application runs.
-    config: Config,
+    config: UniConfig,
     //#region Application specific fields
     // ? Pages
-    about_pc_page: about_pc::AboutPcPage,
+    about_pc_page: pages::about_pc::AboutPcPage,
+    clock_page: pages::clock::ClockPage,
+    preferences_page: pages::preferences::PreferencesPage,
     //#endregion
 }
 
@@ -37,9 +40,52 @@ pub struct AppModel {
 pub enum Message {
     OpenRepositoryUrl,
     ToggleContextPage(ContextPage),
-    UpdateConfig(Config),
+    UpdateConfig(UniConfig),
     LaunchUrl(String),
     Page(pages::Message),
+}
+
+fn init_nav_bar(active_page: &Page) -> nav_bar::Model {
+    let mut nav = nav_bar::Model::default();
+
+    nav.insert()
+        .text(fl!("page-about-pc"))
+        .data::<Page>(Page::AboutPc)
+        .icon(icon::from_name("applications-science-symbolic"))
+        .activate();
+
+    nav.insert()
+        .text(fl!("page-clock"))
+        .data::<Page>(Page::Clock)
+        .icon(icon::from_name("applications-office-symbolic"));
+
+    nav.insert()
+        .text(fl!("page-config"))
+        .data::<Page>(Page::Preferences)
+        .icon(icon::from_name("applications-games-symbolic"));
+
+    let id = {
+        nav.iter()
+            .find(|item_id| {
+                if let Some(item_id) = nav.data::<Page>(*item_id) {
+                    *item_id == *active_page
+                } else {
+                    false
+                }
+            })
+            .unwrap_or_default()
+    };
+
+    nav.activate(id);
+
+    nav
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub struct Flags {
+    pub config_handler: Option<cosmic_config::Config>,
+    pub config: config::UniConfig,
 }
 
 /// Create a COSMIC application from the app model
@@ -48,7 +94,7 @@ impl Application for AppModel {
     type Executor = cosmic::executor::Default;
 
     /// Data that your application receives to its init method.
-    type Flags = ();
+    type Flags = Flags;
 
     /// Messages which the application and its widgets will emit.
     type Message = Message;
@@ -65,46 +111,25 @@ impl Application for AppModel {
     }
 
     /// Initializes the application with any given flags and startup commands.
-    fn init(core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
-        // Create a nav bar with three page items.
-        let mut nav = nav_bar::Model::default();
+    fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
+        let app_config = cosmic_config::Config::new(Self::APP_ID, UniConfig::VERSION)
+            .map(UniConfig::map_config_result)
+            .unwrap_or_default();
 
-        nav.insert()
-            .text(fl!("page-about-pc"))
-            .data::<Page>(Page::AboutPc)
-            .icon(icon::from_name("applications-science-symbolic"))
-            .activate();
-
-        nav.insert()
-            .text(fl!("page-id", num = 2))
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
-
-        nav.insert()
-            .text(fl!("page-id", num = 3))
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
-
-        // Construct the app model with the runtime's core.
         let mut app = AppModel {
             core,
             context_page: ContextPage::default(),
-            nav,
+            nav: init_nav_bar(&app_config.last_active_page),
             key_binds: HashMap::new(),
             // Optional configuration file for an application.
-            config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
-                .map(|context| match Config::get_entry(&context) {
-                    Ok(config) => config,
-                    Err((_errors, config)) => {
-                        // for why in errors {
-                        //     tracing::error!(%why, "error loading app config");
-                        // }
-
-                        config
-                    }
-                })
-                .unwrap_or_default(),
-            about_pc_page: about_pc::AboutPcPage::new(),
+            config_handler: flags.config_handler.clone(),
+            config: app_config.clone(),
+            about_pc_page: pages::about_pc::AboutPcPage::default(),
+            clock_page: pages::clock::ClockPage::default(),
+            preferences_page: pages::preferences::PreferencesPage::new(
+                app_config,
+                flags.config_handler,
+            ),
         };
 
         // Create a startup command that sets the window title.
@@ -159,7 +184,14 @@ impl Application for AppModel {
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
-        self.about_pc_page.view().map(Into::into)
+        match self.nav.active_data::<Page>() {
+            Some(page) => match page {
+                Page::AboutPc => self.about_pc_page.view().map(Into::into),
+                Page::Clock => self.clock_page.view().map(Into::into),
+                Page::Preferences => self.preferences_page.view().map(Into::into),
+            },
+            None => self.about_pc_page.view().map(Into::into),
+        }
     }
 
     /// Register subscriptions for this application.
@@ -170,9 +202,11 @@ impl Application for AppModel {
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::batch(vec![
             self.about_pc_page.subscription().map(Into::into),
+            self.clock_page.subscription().map(Into::into),
+            self.preferences_page.subscription().map(Into::into),
             // Watch for application configuration changes.
             self.core()
-                .watch_config::<Config>(Self::APP_ID)
+                .watch_config::<UniConfig>(Self::APP_ID)
                 .map(|update| {
                     for why in update.errors {
                         tracing::error!(?why, "app config error");
@@ -203,7 +237,10 @@ impl Application for AppModel {
                 }
             }
             Message::UpdateConfig(config) => {
-                self.config = config;
+                self.config = config.clone();
+                _ = self.preferences_page.update(
+                    pages::preferences::PreferencesPageMessage::ConfigUpdated(config),
+                );
             }
             Message::LaunchUrl(url) => match open::that_detached(&url) {
                 Ok(()) => {}
@@ -213,7 +250,13 @@ impl Application for AppModel {
             },
             Message::Page(message) => match message {
                 pages::Message::AboutPc(about_pc_page_message) => {
-                    let _ = self.about_pc_page.update(&about_pc_page_message);
+                    _ = self.about_pc_page.update(about_pc_page_message);
+                }
+                pages::Message::Clock(clock_page_message) => {
+                    _ = self.clock_page.update(clock_page_message);
+                }
+                pages::Message::Preferences(config_page_message) => {
+                    _ = self.preferences_page.update(config_page_message);
                 }
             },
         }
@@ -222,8 +265,18 @@ impl Application for AppModel {
 
     /// Called when a nav item is selected.
     fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
-        // Activate the page in the model.
         self.nav.activate(id);
+
+        if let (Some(page), Some(config_handler)) =
+            (self.nav.active_data::<Page>(), self.config_handler.as_mut())
+        {
+            if let Err(e) = self
+                .config
+                .set_last_active_page(config_handler, page.clone())
+            {
+                tracing::error!("Error setting active page {e}");
+            }
+        }
 
         self.update_title()
     }
@@ -286,10 +339,12 @@ impl AppModel {
 }
 
 /// The page to display in the application.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 pub enum Page {
+    #[default]
     AboutPc,
-    Page2,
-    Page3,
+    Clock,
+    Preferences,
 }
 
 /// The context page to display in the context drawer.

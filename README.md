@@ -1,6 +1,11 @@
 # Uni
 
-An application for the COSMIC™ desktop
+Just learning how to build a desktop application with `libcosmic`
+
+## TODOs:
+- [ ] read `_paid_entries.json` file to a struct, allow picking file via dialog
+- [ ] Custom theme (color, fonts) using a [`.ron` file](https://github.com/ron-rs/ron)
+- [x] Configuration page
 
 ## Installation
 

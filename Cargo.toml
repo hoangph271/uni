@@ -15,10 +15,12 @@ futures-util = "0.3.31"
 i18n-embed-fl = "0.9.2"
 open = "5.3.0"
 rust-embed = "8.5.0"
+serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.41.0", features = ["full"] }
 tokio-stream = "0.1.17"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
+whoami = "1.5.2"
 
 [dependencies.i18n-embed]
 version = "0.15"
@@ -45,6 +47,13 @@ features = [
     # GPU-accelerated rendering
     "wgpu",
 ]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true
 
 # Uncomment to test a locally-cloned libcosmic
 # [patch.'https://github.com/pop-os/libcosmic']

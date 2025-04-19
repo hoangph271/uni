@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+use config::UniConfig;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -31,5 +32,5 @@ fn main() -> cosmic::iced::Result {
     );
 
     // Starts the application's event loop with `()` as the application's flags.
-    cosmic::app::run::<app::AppModel>(settings, ())
+    cosmic::app::run::<app::AppModel>(settings, UniConfig::flags())
 }
