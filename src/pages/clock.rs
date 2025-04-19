@@ -27,13 +27,16 @@ impl From<ClockPageMessage> for app::Message {
 #[allow(clippy::unused_self)]
 impl pages::IPage<ClockPageMessage> for ClockPage {
     fn view(&self) -> Element<ClockPageMessage> {
-        widget::container(widget::column().push(widget::text::monotext(
-            if let Some(system_time) = self.system_time {
-                system_time.format_localized("%T", get_locale()).to_string()
-            } else {
-                fl!("system-time-na")
-            },
-        )))
+        widget::container(
+            widget::column().push(
+                widget::text::title1(if let Some(system_time) = self.system_time {
+                    system_time.format_localized("%T", get_locale()).to_string()
+                } else {
+                    fl!("system-time-na")
+                })
+                .font(cosmic::font::mono()),
+            ),
+        )
         .center(Length::Fill)
         .into()
     }

@@ -38,7 +38,7 @@ impl pages::IPage<PreferencesPageMessage> for PreferencesPage {
     }
 
     fn subscription(&self) -> cosmic::iced::Subscription<PreferencesPageMessage> {
-        todo!()
+        cosmic::iced::Subscription::none()
     }
 
     fn update(&mut self, message: PreferencesPageMessage) -> cosmic::Task<PreferencesPageMessage> {

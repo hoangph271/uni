@@ -24,7 +24,7 @@ pub struct AppModel {
     nav: nav_bar::Model,
     /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    // config_handler: Option<cosmic_config::Config>,
+    config_handler: Option<cosmic_config::Config>,
     // Configuration data that persists between application runs.
     config: UniConfig,
     //#region Application specific fields
@@ -45,7 +45,7 @@ pub enum Message {
     Page(pages::Message),
 }
 
-fn init_nav_bar() -> nav_bar::Model {
+fn init_nav_bar(active_page: &Page) -> nav_bar::Model {
     let mut nav = nav_bar::Model::default();
 
     nav.insert()
@@ -63,6 +63,20 @@ fn init_nav_bar() -> nav_bar::Model {
         .text(fl!("page-config"))
         .data::<Page>(Page::Preferences)
         .icon(icon::from_name("applications-games-symbolic"));
+
+    let id = {
+        nav.iter()
+            .find(|item_id| {
+                if let Some(item_id) = nav.data::<Page>(*item_id) {
+                    *item_id == *active_page
+                } else {
+                    false
+                }
+            })
+            .unwrap_or_default()
+    };
+
+    nav.activate(id);
 
     nav
 }
@@ -105,10 +119,10 @@ impl Application for AppModel {
         let mut app = AppModel {
             core,
             context_page: ContextPage::default(),
-            nav: init_nav_bar(),
+            nav: init_nav_bar(&app_config.last_active_page),
             key_binds: HashMap::new(),
-            // config_handler: flags.config_handler.clone(),
             // Optional configuration file for an application.
+            config_handler: flags.config_handler.clone(),
             config: app_config.clone(),
             about_pc_page: pages::about_pc::AboutPcPage::default(),
             clock_page: pages::clock::ClockPage::default(),
@@ -189,6 +203,7 @@ impl Application for AppModel {
         Subscription::batch(vec![
             self.about_pc_page.subscription().map(Into::into),
             self.clock_page.subscription().map(Into::into),
+            self.preferences_page.subscription().map(Into::into),
             // Watch for application configuration changes.
             self.core()
                 .watch_config::<UniConfig>(Self::APP_ID)
@@ -250,8 +265,18 @@ impl Application for AppModel {
 
     /// Called when a nav item is selected.
     fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
-        // Activate the page in the model.
         self.nav.activate(id);
+
+        if let (Some(page), Some(config_handler)) =
+            (self.nav.active_data::<Page>(), self.config_handler.as_mut())
+        {
+            if let Err(e) = self
+                .config
+                .set_last_active_page(config_handler, page.clone())
+            {
+                tracing::error!("Error setting active page {e}");
+            }
+        }
 
         self.update_title()
     }
@@ -314,8 +339,9 @@ impl AppModel {
 }
 
 /// The page to display in the application.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 pub enum Page {
+    #[default]
     AboutPc,
     Clock,
     Preferences,

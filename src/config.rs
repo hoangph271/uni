@@ -7,12 +7,13 @@ use cosmic::{
     Application,
 };
 
-use crate::app::{AppModel, Flags};
+use crate::app::{AppModel, Flags, Page};
 
 #[derive(Debug, Default, Clone, CosmicConfigEntry, Eq, PartialEq)]
 #[version = 1]
 pub struct UniConfig {
     pub username: String,
+    pub last_active_page: Page,
 }
 
 pub const CONFIG_VERSION: u64 = 1;
