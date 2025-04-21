@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
+use std::path::PathBuf;
+
 use cosmic::{
     cosmic_config::{
         self, cosmic_config_derive::CosmicConfigEntry, Config as CosmicConfig, CosmicConfigEntry,
@@ -14,6 +16,7 @@ use crate::app::{AppModel, Flags, Page};
 pub struct UniConfig {
     pub username: String,
     pub last_active_page: Page,
+    pub paid_entries_json_path: Option<PathBuf>,
 }
 
 pub const CONFIG_VERSION: u64 = 1;

@@ -1,5 +1,6 @@
 pub mod about_pc;
 pub mod clock;
+pub mod paid_entries;
 pub mod preferences;
 
 use crate::app;
@@ -17,6 +18,7 @@ pub enum Message {
     AboutPc(about_pc::AboutPcPageMessage),
     Clock(clock::ClockPageMessage),
     Preferences(preferences::PreferencesPageMessage),
+    PaidEntries(paid_entries::PaidEntriesPageMessage),
 }
 
 impl From<Message> for app::Message {

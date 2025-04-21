@@ -32,6 +32,7 @@ pub struct AppModel {
     about_pc_page: pages::about_pc::AboutPcPage,
     clock_page: pages::clock::ClockPage,
     preferences_page: pages::preferences::PreferencesPage,
+    paid_entries_page: pages::paid_entries::PaidEntriesPage,
     //#endregion
 }
 
@@ -62,6 +63,11 @@ fn init_nav_bar(active_page: &Page) -> nav_bar::Model {
     nav.insert()
         .text(fl!("page-config"))
         .data::<Page>(Page::Preferences)
+        .icon(icon::from_name("applications-games-symbolic"));
+
+    nav.insert()
+        .text(fl!("page-paid-entries"))
+        .data::<Page>(Page::PaidEntries)
         .icon(icon::from_name("applications-games-symbolic"));
 
     let id = {
@@ -127,6 +133,10 @@ impl Application for AppModel {
             about_pc_page: pages::about_pc::AboutPcPage::default(),
             clock_page: pages::clock::ClockPage::default(),
             preferences_page: pages::preferences::PreferencesPage::new(
+                app_config.clone(),
+                flags.config_handler.clone(),
+            ),
+            paid_entries_page: pages::paid_entries::PaidEntriesPage::new(
                 app_config,
                 flags.config_handler,
             ),
@@ -189,6 +199,7 @@ impl Application for AppModel {
                 Page::AboutPc => self.about_pc_page.view().map(Into::into),
                 Page::Clock => self.clock_page.view().map(Into::into),
                 Page::Preferences => self.preferences_page.view().map(Into::into),
+                Page::PaidEntries => self.paid_entries_page.view().map(Into::into),
             },
             None => self.about_pc_page.view().map(Into::into),
         }
@@ -257,6 +268,9 @@ impl Application for AppModel {
                 }
                 pages::Message::Preferences(config_page_message) => {
                     _ = self.preferences_page.update(config_page_message);
+                }
+                pages::Message::PaidEntries(paid_entries_page_message) => {
+                    _ = self.paid_entries_page.update(paid_entries_page_message);
                 }
             },
         }
@@ -345,6 +359,7 @@ pub enum Page {
     AboutPc,
     Clock,
     Preferences,
+    PaidEntries,
 }
 
 /// The context page to display in the context drawer.
