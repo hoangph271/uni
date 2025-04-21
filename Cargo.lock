@@ -5024,6 +5024,7 @@ dependencies = [
  "rfd",
  "rust-embed",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-stream",
  "tracing",

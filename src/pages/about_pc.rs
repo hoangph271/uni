@@ -21,7 +21,7 @@ pub enum AboutPcPageMessage {
     FetchedDistro(String),
 }
 
-impl From<AboutPcPageMessage> for app::Message {
+impl From<AboutPcPageMessage> for app::UniAppMessage {
     fn from(message: AboutPcPageMessage) -> Self {
         pages::Message::AboutPc(message).into()
     }

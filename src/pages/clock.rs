@@ -18,7 +18,7 @@ pub enum ClockPageMessage {
     SystemTimeTick(DateTime<Utc>),
 }
 
-impl From<ClockPageMessage> for app::Message {
+impl From<ClockPageMessage> for app::UniAppMessage {
     fn from(message: ClockPageMessage) -> Self {
         pages::Message::Clock(message).into()
     }

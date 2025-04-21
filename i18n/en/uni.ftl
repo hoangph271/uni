@@ -14,3 +14,5 @@ system-time-na = System time: N/A
 pick-json-dialog-title = Pick your json file
 pick-file = Pick file
 json-path = JSON path
+error-loading-json-file = Loading JSON file failed
+btn-confirm = Confirm

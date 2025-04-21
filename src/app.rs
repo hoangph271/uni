@@ -38,7 +38,7 @@ pub struct AppModel {
 
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
-pub enum Message {
+pub enum UniAppMessage {
     OpenRepositoryUrl,
     ToggleContextPage(ContextPage),
     UpdateConfig(UniConfig),
@@ -68,7 +68,7 @@ fn init_nav_bar(active_page: &Page) -> nav_bar::Model {
     nav.insert()
         .text(fl!("page-paid-entries"))
         .data::<Page>(Page::PaidEntries)
-        .icon(icon::from_name("applications-games-symbolic"));
+        .icon(icon::from_name("zoom-original-symbolic"));
 
     let id = {
         nav.iter()
@@ -103,7 +103,7 @@ impl Application for AppModel {
     type Flags = Flags;
 
     /// Messages which the application and its widgets will emit.
-    type Message = Message;
+    type Message = UniAppMessage;
 
     /// Unique identifier in RDNN (reverse domain name notation) format.
     const APP_ID: &'static str = "com.github.pop-os.cosmic-app-template";
@@ -143,7 +143,7 @@ impl Application for AppModel {
         };
 
         // Create a startup command that sets the window title.
-        let command = app.update_title();
+        let command = Task::batch([app.update_title(), app.on_page_init()]);
 
         (app, command)
     }
@@ -178,12 +178,12 @@ impl Application for AppModel {
         Some(match self.context_page {
             ContextPage::About => context_drawer::context_drawer(
                 self.about(),
-                Message::ToggleContextPage(ContextPage::About),
+                UniAppMessage::ToggleContextPage(ContextPage::About),
             )
             .title(fl!("about")),
             ContextPage::Settings => context_drawer::context_drawer(
                 self.settings(),
-                Message::ToggleContextPage(ContextPage::Settings),
+                UniAppMessage::ToggleContextPage(ContextPage::Settings),
             )
             .title(fl!("settings")),
         })
@@ -223,7 +223,7 @@ impl Application for AppModel {
                         tracing::error!(?why, "app config error");
                     }
 
-                    Message::UpdateConfig(update.config)
+                    UniAppMessage::UpdateConfig(update.config)
                 }),
         ])
     }
@@ -234,10 +234,10 @@ impl Application for AppModel {
     /// on the application's async runtime.
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         match message {
-            Message::OpenRepositoryUrl => {
+            UniAppMessage::OpenRepositoryUrl => {
                 _ = open::that_detached(REPOSITORY);
             }
-            Message::ToggleContextPage(context_page) => {
+            UniAppMessage::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
                     // Close the context drawer if the toggled context page is the same.
                     self.core.window.show_context = !self.core.window.show_context;
@@ -247,19 +247,19 @@ impl Application for AppModel {
                     self.core.window.show_context = true;
                 }
             }
-            Message::UpdateConfig(config) => {
+            UniAppMessage::UpdateConfig(config) => {
                 self.config = config.clone();
                 _ = self.preferences_page.update(
                     pages::preferences::PreferencesPageMessage::ConfigUpdated(config),
                 );
             }
-            Message::LaunchUrl(url) => match open::that_detached(&url) {
+            UniAppMessage::LaunchUrl(url) => match open::that_detached(&url) {
                 Ok(()) => {}
                 Err(err) => {
                     eprintln!("failed to open {url:?}: {err}");
                 }
             },
-            Message::Page(message) => match message {
+            UniAppMessage::Page(message) => match message {
                 pages::Message::AboutPc(about_pc_page_message) => {
                     _ = self.about_pc_page.update(about_pc_page_message);
                 }
@@ -270,11 +270,21 @@ impl Application for AppModel {
                     _ = self.preferences_page.update(config_page_message);
                 }
                 pages::Message::PaidEntries(paid_entries_page_message) => {
-                    _ = self.paid_entries_page.update(paid_entries_page_message);
+                    return self
+                        .paid_entries_page
+                        .update(paid_entries_page_message)
+                        .map(|task| UniAppMessage::Page(pages::Message::PaidEntries(task)).into())
                 }
             },
         }
         Task::none()
+    }
+
+    fn dialog(&self) -> Option<Element<Self::Message>> {
+        match self.nav.active_data::<Page>() {
+            Some(Page::PaidEntries) => self.paid_entries_page.dialog().map(|it| it.map(Into::into)),
+            _ => None,
+        }
     }
 
     /// Called when a nav item is selected.
@@ -292,13 +302,13 @@ impl Application for AppModel {
             }
         }
 
-        self.update_title()
+        Task::batch([self.on_page_init(), self.update_title()])
     }
 }
 
 #[allow(clippy::unused_self)]
 impl AppModel {
-    pub fn about(&self) -> Element<Message> {
+    pub fn about(&self) -> Element<UniAppMessage> {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
         let icon = widget::svg(widget::svg::Handle::from_memory(APP_ICON));
@@ -310,7 +320,7 @@ impl AppModel {
         let date = env!("VERGEN_GIT_COMMIT_DATE");
 
         let link = widget::button::link(REPOSITORY)
-            .on_press(Message::OpenRepositoryUrl)
+            .on_press(UniAppMessage::OpenRepositoryUrl)
             .padding(0);
 
         widget::column()
@@ -323,7 +333,9 @@ impl AppModel {
                     hash = short_hash.as_str(),
                     date = date
                 ))
-                .on_press(Message::LaunchUrl(format!("{REPOSITORY}/commits/{hash}")))
+                .on_press(UniAppMessage::LaunchUrl(format!(
+                    "{REPOSITORY}/commits/{hash}"
+                )))
                 .padding(0),
             )
             .align_x(Alignment::Center)
@@ -331,12 +343,12 @@ impl AppModel {
             .into()
     }
 
-    pub fn settings(&self) -> Element<Message> {
+    pub fn settings(&self) -> Element<UniAppMessage> {
         widget::column().push(widget::text(fl!("settings"))).into()
     }
 
     /// Updates the header and window titles.
-    pub fn update_title(&mut self) -> Task<Message> {
+    pub fn update_title(&mut self) -> Task<UniAppMessage> {
         let mut window_title = fl!("app-title");
 
         if let Some(page) = self.nav.text(self.nav.active()) {
@@ -349,6 +361,22 @@ impl AppModel {
         } else {
             Task::none()
         }
+    }
+
+    pub fn on_page_init(&self) -> Task<UniAppMessage> {
+        match self.nav.active_data::<Page>() {
+            Some(Page::PaidEntries) => self
+                .paid_entries_page
+                .on_init()
+                .map(|it| pages::Message::PaidEntries(it).into()),
+            _ => Task::none(),
+        }
+    }
+}
+
+impl From<pages::Message> for cosmic::app::Message<UniAppMessage> {
+    fn from(page_message: pages::Message) -> Self {
+        Self::App(UniAppMessage::Page(page_message))
     }
 }
 
@@ -377,12 +405,12 @@ pub enum MenuAction {
 }
 
 impl menu::action::MenuAction for MenuAction {
-    type Message = Message;
+    type Message = UniAppMessage;
 
     fn message(&self) -> Self::Message {
         match self {
-            MenuAction::About => Message::ToggleContextPage(ContextPage::About),
-            MenuAction::Settings => Message::ToggleContextPage(ContextPage::Settings),
+            MenuAction::About => UniAppMessage::ToggleContextPage(ContextPage::About),
+            MenuAction::Settings => UniAppMessage::ToggleContextPage(ContextPage::Settings),
         }
     }
 }

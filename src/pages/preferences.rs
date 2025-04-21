@@ -37,10 +37,6 @@ impl pages::IPage<PreferencesPageMessage> for PreferencesPage {
         .into()
     }
 
-    fn subscription(&self) -> cosmic::iced::Subscription<PreferencesPageMessage> {
-        cosmic::iced::Subscription::none()
-    }
-
     fn update(&mut self, message: PreferencesPageMessage) -> cosmic::Task<PreferencesPageMessage> {
         match message {
             PreferencesPageMessage::Username(username) => {
@@ -57,7 +53,7 @@ impl pages::IPage<PreferencesPageMessage> for PreferencesPage {
     }
 }
 
-impl From<PreferencesPageMessage> for app::Message {
+impl From<PreferencesPageMessage> for app::UniAppMessage {
     fn from(message: PreferencesPageMessage) -> Self {
         pages::Message::Preferences(message).into()
     }
