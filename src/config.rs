@@ -9,7 +9,8 @@ use cosmic::{
     Application,
 };
 
-use crate::app::{AppModel, Flags, Page};
+use crate::app::{AppModel, Flags};
+use crate::pages::Page;
 
 #[derive(Debug, Default, Clone, CosmicConfigEntry, Eq, PartialEq)]
 #[version = 1]
@@ -17,6 +18,7 @@ pub struct UniConfig {
     pub username: String,
     pub last_active_page: Page,
     pub paid_entries_json_path: Option<PathBuf>,
+    pub coin_market_cap_api_key: Option<String>,
 }
 
 pub const CONFIG_VERSION: u64 = 1;

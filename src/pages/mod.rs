@@ -36,3 +36,13 @@ impl From<Message> for app::UniAppMessage {
         Self::Page(message)
     }
 }
+
+/// The page to display in the application.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+pub enum Page {
+    #[default]
+    AboutPc,
+    Clock,
+    Preferences,
+    PaidEntries,
+}

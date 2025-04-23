@@ -3,7 +3,10 @@
 Just learning how to build a desktop application with `libcosmic`
 
 ## TODOs:
-- [ ] read `_paid_entries.json` file to a struct, allow picking file via dialog
+- [ ] map `_paid_entries.json` to pricing to show PnL
+- [x] read `_paid_entries.json` file to a struct, allow picking file via dialog
+- [ ] getting prices from CMC API
+- [ ] allow adding/storing CMC API key
 - [ ] Custom theme (color, fonts) using a [`.ron` file](https://github.com/ron-rs/ron)
 - [x] Configuration page
 

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::config::{self, UniConfig};
-use crate::pages::IPage as _;
-use crate::{fl, pages};
+use crate::view::lib::nav_bar::init_nav_bar;
+use crate::{
+    fl,
+    pages::{self, IPage, Page},
+};
 use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::{Alignment, Subscription};
-use cosmic::widget::{self, icon, menu, nav_bar};
+use cosmic::widget::{self, menu, nav_bar};
 use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Element};
 use std::collections::HashMap;
 
@@ -44,47 +47,6 @@ pub enum UniAppMessage {
     UpdateConfig(UniConfig),
     LaunchUrl(String),
     Page(pages::Message),
-}
-
-fn init_nav_bar(active_page: &Page) -> nav_bar::Model {
-    let mut nav = nav_bar::Model::default();
-
-    nav.insert()
-        .text(fl!("page-about-pc"))
-        .data::<Page>(Page::AboutPc)
-        .icon(icon::from_name("applications-science-symbolic"))
-        .activate();
-
-    nav.insert()
-        .text(fl!("page-clock"))
-        .data::<Page>(Page::Clock)
-        .icon(icon::from_name("applications-office-symbolic"));
-
-    nav.insert()
-        .text(fl!("page-config"))
-        .data::<Page>(Page::Preferences)
-        .icon(icon::from_name("applications-games-symbolic"));
-
-    nav.insert()
-        .text(fl!("page-paid-entries"))
-        .data::<Page>(Page::PaidEntries)
-        .icon(icon::from_name("zoom-original-symbolic"));
-
-    let id = {
-        nav.iter()
-            .find(|item_id| {
-                if let Some(item_id) = nav.data::<Page>(*item_id) {
-                    *item_id == *active_page
-                } else {
-                    false
-                }
-            })
-            .unwrap_or_default()
-    };
-
-    nav.activate(id);
-
-    nav
 }
 
 #[allow(dead_code)]
@@ -378,16 +340,6 @@ impl From<pages::Message> for cosmic::app::Message<UniAppMessage> {
     fn from(page_message: pages::Message) -> Self {
         Self::App(UniAppMessage::Page(page_message))
     }
-}
-
-/// The page to display in the application.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
-pub enum Page {
-    #[default]
-    AboutPc,
-    Clock,
-    Preferences,
-    PaidEntries,
 }
 
 /// The context page to display in the context drawer.

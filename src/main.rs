@@ -9,6 +9,7 @@ mod config;
 mod i18n;
 mod locale;
 mod pages;
+mod view;
 
 fn main() -> cosmic::iced::Result {
     let subscriber = FmtSubscriber::builder()
