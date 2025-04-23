@@ -4,8 +4,9 @@ use std::path::PathBuf;
 
 use crate::fl;
 use crate::{app, config, pages};
+use cosmic::iced::alignment::Vertical;
 use cosmic::widget::icon;
-use cosmic::{cosmic_config, widget, Element, Task};
+use cosmic::{cosmic_config, theme, widget, Apply, Element, Task};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
@@ -15,6 +16,10 @@ pub enum PaidEntriesPageMessage {
     RawJsonUpdated(RawJsonData),
     RawJsonLoadingFailed(String),
     ClearDialog,
+    CmcApiKeySubmit,
+    CmcApiKeyInput(String),
+    CmcApiKeyClearInput,
+    ToggleOnEditApiKey,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -60,6 +65,8 @@ pub struct PaidEntriesPage {
     dialog: Option<PaidEntriesDialogContent>,
     paid_entries_json_load_state: PaidEntriesJsonLoadState,
     raw_json_data: Option<RawJsonData>,
+    is_edit_api_key_unlocked: bool,
+    editing_cmc_api_key: String,
 }
 
 impl PaidEntriesPage {
@@ -90,8 +97,59 @@ impl PaidEntriesPage {
 
 impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
     fn view(&self) -> Element<PaidEntriesPageMessage> {
+        let active_theme = theme::active();
+        let cosmic_theme = active_theme.cosmic();
+
         widget::container(
             widget::column()
+                .push(widget::text(fl!("cmc-api-key")))
+                .push(widget::Space::with_height(cosmic_theme.space_xxs()))
+                .push(
+                    widget::row()
+                        .align_y(Vertical::Center)
+                        .push(
+                            widget::text_input(
+                                fl!("cmc-api-key"),
+                                if self.is_edit_api_key_unlocked {
+                                    &self.editing_cmc_api_key
+                                } else {
+                                    self.config
+                                        .coin_market_cap_api_key
+                                        .as_ref()
+                                        .map_or("", |cmc_api_key| cmc_api_key)
+                                },
+                            )
+                            .password()
+                            .apply(|widget| {
+                                if self.is_edit_api_key_unlocked {
+                                    widget
+                                        .on_clear(PaidEntriesPageMessage::CmcApiKeyClearInput)
+                                        .on_input(PaidEntriesPageMessage::CmcApiKeyInput)
+                                } else {
+                                    widget
+                                }
+                            }),
+                        )
+                        .push(widget::Space::with_width(cosmic_theme.space_xxs()))
+                        .push(
+                            widget::button::icon(if self.is_edit_api_key_unlocked {
+                                icon::from_name("checkbox-checked-symbolic")
+                            } else {
+                                icon::from_name("edit-symbolic")
+                            })
+                            .apply(|widget| {
+                                if self.is_edit_api_key_unlocked {
+                                    if self.editing_cmc_api_key.is_empty() {
+                                        widget
+                                    } else {
+                                        widget.on_press(PaidEntriesPageMessage::CmcApiKeySubmit)
+                                    }
+                                } else {
+                                    widget.on_press(PaidEntriesPageMessage::ToggleOnEditApiKey)
+                                }
+                            }),
+                        ),
+                )
                 .push(
                     widget::text_input(
                         fl!("json-path"),
@@ -176,6 +234,33 @@ impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
             }
             PaidEntriesPageMessage::ClearDialog => {
                 self.dialog = None;
+            }
+            PaidEntriesPageMessage::CmcApiKeySubmit => {
+                assert!(
+                    !self.editing_cmc_api_key.is_empty(),
+                    "editing_cmc_api_key must NOT be empty"
+                );
+
+                if let Some(config_handler) = self.config_handler.as_ref() {
+                    if let Err(e) = self.config.set_coin_market_cap_api_key(
+                        config_handler,
+                        Some(self.editing_cmc_api_key.clone()),
+                    ) {
+                        tracing::error!("Error set_coin_market_cap_api_key: {e}");
+                    } else {
+                        self.is_edit_api_key_unlocked = false;
+                    }
+                }
+            }
+            PaidEntriesPageMessage::ToggleOnEditApiKey => {
+                self.is_edit_api_key_unlocked = true;
+            }
+            PaidEntriesPageMessage::CmcApiKeyInput(cmc_api_key) => {
+                self.editing_cmc_api_key = cmc_api_key;
+            }
+            PaidEntriesPageMessage::CmcApiKeyClearInput => {
+                self.editing_cmc_api_key = String::new();
+                self.is_edit_api_key_unlocked = false;
             }
         }
 

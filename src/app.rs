@@ -336,7 +336,7 @@ impl AppModel {
     }
 }
 
-impl From<pages::Message> for cosmic::app::Message<UniAppMessage> {
+impl From<pages::Message> for cosmic::action::Action<UniAppMessage> {
     fn from(page_message: pages::Message) -> Self {
         Self::App(UniAppMessage::Page(page_message))
     }
