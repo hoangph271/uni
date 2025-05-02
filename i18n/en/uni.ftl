@@ -18,3 +18,6 @@ cmc-api-key = CoinMarketCap API Key
 error-loading-json-file = Loading JSON file failed
 error-fetching-crypto-prices = Fetching crypto prices failed
 btn-confirm = Confirm
+tab-coin-balance = Coin Balance
+tab-coin-prices = Coin Prices
+no-tab-activate-warning = No tab activated, this should not occur

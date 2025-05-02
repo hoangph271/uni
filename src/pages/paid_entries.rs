@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::fl;
 use crate::{app, config, pages};
 use cosmic::iced::alignment::Vertical;
-use cosmic::widget::icon;
+use cosmic::widget::{icon, segmented_button};
 use cosmic::{cosmic_config, theme, widget, Apply, Element, Task};
 use serde::Deserialize;
 
@@ -22,6 +22,7 @@ pub enum PaidEntriesPageMessage {
     CmcApiKeyInput(String),
     CmcApiKeyClearInput,
     ToggleOnEditApiKey,
+    SwitchTab(segmented_button::Entity),
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -104,6 +105,12 @@ pub struct PaidEntriesPage {
     raw_json_data: Option<RawJsonData>,
     is_edit_api_key_unlocked: bool,
     editing_cmc_api_key: String,
+    tab_model: segmented_button::SingleSelectModel,
+}
+
+enum PaidEntriesPageTabs {
+    CoinBalance,
+    CoinPrices,
 }
 
 impl PaidEntriesPage {
@@ -112,6 +119,17 @@ impl PaidEntriesPage {
         Self {
             config_handler,
             config,
+            tab_model: segmented_button::SingleSelectModel::builder()
+                .insert(|it| {
+                    it.text(fl!("tab-coin-balance"))
+                        .data(PaidEntriesPageTabs::CoinBalance)
+                        .activate()
+                })
+                .insert(|it| {
+                    it.text(fl!("tab-coin-prices"))
+                        .data(PaidEntriesPageTabs::CoinPrices)
+                })
+                .build(),
             ..Default::default()
         }
     }
@@ -162,83 +180,98 @@ impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
         let active_theme = theme::active();
         let cosmic_theme = active_theme.cosmic();
 
-        widget::container(
-            widget::column()
-                .push(widget::text(fl!("cmc-api-key")))
-                .push(widget::Space::with_height(cosmic_theme.space_xxs()))
-                .push(
-                    widget::row()
-                        .align_y(Vertical::Center)
-                        .push(
-                            widget::text_input(
-                                fl!("cmc-api-key"),
-                                if self.is_edit_api_key_unlocked {
-                                    &self.editing_cmc_api_key
-                                } else {
-                                    self.config
-                                        .coin_market_cap_api_key
-                                        .as_ref()
-                                        .map_or("", |cmc_api_key| cmc_api_key)
-                                },
-                            )
-                            .password()
-                            .apply(|widget| {
-                                if self.is_edit_api_key_unlocked {
-                                    widget
-                                        .on_clear(PaidEntriesPageMessage::CmcApiKeyClearInput)
-                                        .on_input(PaidEntriesPageMessage::CmcApiKeyInput)
-                                } else {
-                                    widget
-                                }
-                            }),
-                        )
-                        .push(widget::Space::with_width(cosmic_theme.space_xxs()))
-                        .push(
-                            widget::button::icon(if self.is_edit_api_key_unlocked {
-                                icon::from_name("checkbox-checked-symbolic")
-                            } else {
-                                icon::from_name("edit-symbolic")
-                            })
-                            .apply(|widget| {
-                                if self.is_edit_api_key_unlocked {
-                                    if self.editing_cmc_api_key.is_empty() {
-                                        widget
+        widget::column::with_children(vec![
+            widget::tab_bar::horizontal(&self.tab_model)
+                .on_activate(PaidEntriesPageMessage::SwitchTab)
+                .width(cosmic::iced::Length::Fill)
+                .into(),
+            match self.tab_model.active_data::<PaidEntriesPageTabs>() {
+                Some(PaidEntriesPageTabs::CoinBalance) => widget::column()
+                    .push(widget::text(fl!("cmc-api-key")))
+                    .push(widget::Space::with_height(cosmic_theme.space_xxs()))
+                    .push(
+                        widget::row()
+                            .align_y(Vertical::Center)
+                            .push(
+                                widget::text_input(
+                                    fl!("cmc-api-key"),
+                                    if self.is_edit_api_key_unlocked {
+                                        &self.editing_cmc_api_key
                                     } else {
-                                        widget.on_press(PaidEntriesPageMessage::CmcApiKeySubmit)
+                                        self.config
+                                            .coin_market_cap_api_key
+                                            .as_ref()
+                                            .map_or("", |cmc_api_key| cmc_api_key)
+                                    },
+                                )
+                                .password()
+                                .apply(|widget| {
+                                    if self.is_edit_api_key_unlocked {
+                                        widget
+                                            .on_clear(PaidEntriesPageMessage::CmcApiKeyClearInput)
+                                            .on_input(PaidEntriesPageMessage::CmcApiKeyInput)
+                                    } else {
+                                        widget
                                     }
+                                }),
+                            )
+                            .push(widget::Space::with_width(cosmic_theme.space_xxs()))
+                            .push(
+                                widget::button::icon(if self.is_edit_api_key_unlocked {
+                                    icon::from_name("checkbox-checked-symbolic")
                                 } else {
-                                    widget.on_press(PaidEntriesPageMessage::ToggleOnEditApiKey)
-                                }
-                            }),
-                        ),
-                )
-                .push(
-                    widget::text_input(
-                        fl!("json-path"),
-                        if let Some(json_path) = &self.config.paid_entries_json_path {
-                            json_path.to_string_lossy()
-                        } else {
-                            Cow::Owned(String::new())
-                        },
+                                    icon::from_name("edit-symbolic")
+                                })
+                                .apply(|widget| {
+                                    if self.is_edit_api_key_unlocked {
+                                        if self.editing_cmc_api_key.is_empty() {
+                                            widget
+                                        } else {
+                                            widget.on_press(PaidEntriesPageMessage::CmcApiKeySubmit)
+                                        }
+                                    } else {
+                                        widget.on_press(PaidEntriesPageMessage::ToggleOnEditApiKey)
+                                    }
+                                }),
+                            ),
                     )
-                    .label(fl!("json-path"))
-                    .trailing_icon(
-                        widget::button::icon(icon::from_name("edit-symbolic"))
-                            .on_press(PaidEntriesPageMessage::ShowJsonPicker)
-                            .into(),
-                    ),
-                )
-                .push_maybe(self.raw_json_data.as_ref().map(|raw_json_data| {
-                    widget::text(format!(
-                        "You got {}",
-                        raw_json_data
-                            .keys()
-                            .map(|it| &**it)
-                            .collect::<Vec<&str>>()
-                            .join(", ")
-                    ))
-                })),
-        )
+                    .push(
+                        widget::text_input(
+                            fl!("json-path"),
+                            if let Some(json_path) = &self.config.paid_entries_json_path {
+                                json_path.to_string_lossy()
+                            } else {
+                                Cow::Owned(String::new())
+                            },
+                        )
+                        .label(fl!("json-path"))
+                        .trailing_icon(
+                            widget::button::icon(icon::from_name("edit-symbolic"))
+                                .on_press(PaidEntriesPageMessage::ShowJsonPicker)
+                                .into(),
+                        ),
+                    )
+                    .push_maybe(self.raw_json_data.as_ref().map(|raw_json_data| {
+                        widget::text(format!(
+                            "You got {}",
+                            raw_json_data
+                                .keys()
+                                .map(|it| &**it)
+                                .collect::<Vec<&str>>()
+                                .join(", ")
+                        ))
+                    }))
+                    .into(),
+                Some(PaidEntriesPageTabs::CoinPrices) => {
+                    widget::column().push(widget::text("N/A")).into()
+                }
+                None => {
+                    tracing::warn!("No tab activate?");
+
+                    widget::text(fl!("no-tab-activate-warning")).into()
+                }
+            },
+        ])
         .into()
     }
 
@@ -341,6 +374,9 @@ impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
                     title: fl!("error-fetching-crypto-prices"),
                     body: error_message,
                 }));
+            }
+            PaidEntriesPageMessage::SwitchTab(id) => {
+                self.tab_model.activate(id);
             }
         }
 
