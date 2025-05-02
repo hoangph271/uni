@@ -15,6 +15,8 @@ pub enum PaidEntriesPageMessage {
     RawJsonLoaded(RawJsonData),
     RawJsonUpdated(RawJsonData),
     RawJsonLoadingFailed(String),
+    CryptoPricesFetched(HashMap<String, Vec<CoinApiRecord>>),
+    CryptoPricesFetchingFailed(String),
     ClearDialog,
     CmcApiKeySubmit,
     CmcApiKeyInput(String),
@@ -30,6 +32,40 @@ pub struct BuyEntry {
     // #[serde(rename = "amountUsd")]
     // amount_usd: f64,
     // amount: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CoinApiResponse {
+    data: HashMap<String, Vec<CoinApiRecord>>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CoinApiRecord {
+    pub id: i32,
+    pub name: String,
+    pub symbol: String,
+    pub platform: Option<Platform>,
+    pub quote: Quote,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Platform {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Quote {
+    #[serde(rename = "USD")]
+    pub usd: Usd,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Usd {
+    // Define fields within the USD quote object based on the actual JSON structure
+    // For example, if it has a 'price' field:
+    pub price: Option<f64>,
+    // Add other fields like 'volume_24h', 'market_cap', etc., if present
 }
 
 type RawJsonData = HashMap<String, Vec<BuyEntry>>;
@@ -64,6 +100,7 @@ pub struct PaidEntriesPage {
     config: config::UniConfig,
     dialog: Option<PaidEntriesDialogContent>,
     paid_entries_json_load_state: PaidEntriesJsonLoadState,
+    crypto_names_to_prices: Option<HashMap<String, Vec<CoinApiRecord>>>,
     raw_json_data: Option<RawJsonData>,
     is_edit_api_key_unlocked: bool,
     editing_cmc_api_key: String,
@@ -89,6 +126,31 @@ impl PaidEntriesPage {
                 Err(e) => {
                     tracing::error!("load_paid_entries_json failed: {e}");
                     PaidEntriesPageMessage::RawJsonLoadingFailed(e.to_string())
+                }
+            }
+        })
+    }
+
+    fn load_crypto_prices(api_key: String, symbols: Vec<String>) -> Task<PaidEntriesPageMessage> {
+        Task::future(async move {
+            let url = format!(
+                "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?symbol={}",
+                symbols.join(",")
+            );
+
+            match reqwest::Client::new()
+                .get(url)
+                .header("X-CMC_PRO_API_KEY", api_key)
+                .send()
+                .await
+            {
+                Ok(response) => match response.json::<CoinApiResponse>().await {
+                    Ok(response) => PaidEntriesPageMessage::CryptoPricesFetched(response.data),
+                    Err(e) => PaidEntriesPageMessage::CryptoPricesFetchingFailed(e.to_string()),
+                },
+                Err(e) => {
+                    tracing::error!("{e}");
+                    PaidEntriesPageMessage::CryptoPricesFetchingFailed(e.to_string())
                 }
             }
         })
@@ -223,7 +285,16 @@ impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
             }
             PaidEntriesPageMessage::RawJsonLoaded(raw_json_data) => {
                 self.paid_entries_json_load_state = PaidEntriesJsonLoadState::Loaded;
-                self.raw_json_data = Some(raw_json_data);
+                self.raw_json_data = Some(raw_json_data.clone());
+
+                if let Some(api_key) = &self.config.coin_market_cap_api_key {
+                    let symbols = raw_json_data
+                        .keys()
+                        .map(std::borrow::ToOwned::to_owned)
+                        .collect();
+
+                    return Self::load_crypto_prices(api_key.to_owned(), symbols);
+                }
             }
             PaidEntriesPageMessage::RawJsonLoadingFailed(reason) => {
                 self.dialog = Some(PaidEntriesDialogContent::Error(DialogContent {
@@ -262,13 +333,22 @@ impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
                 self.editing_cmc_api_key = String::new();
                 self.is_edit_api_key_unlocked = false;
             }
+            PaidEntriesPageMessage::CryptoPricesFetched(crypto_names_to_prices) => {
+                self.crypto_names_to_prices = Some(crypto_names_to_prices);
+            }
+            PaidEntriesPageMessage::CryptoPricesFetchingFailed(error_message) => {
+                self.dialog = Some(PaidEntriesDialogContent::Error(DialogContent {
+                    title: fl!("error-fetching-crypto-prices"),
+                    body: error_message,
+                }));
+            }
         }
 
         Task::none()
     }
 
     fn on_init(&self) -> cosmic::Task<PaidEntriesPageMessage> {
-        match self.paid_entries_json_load_state {
+        let load_paid_entries_task = match self.paid_entries_json_load_state {
             PaidEntriesJsonLoadState::Errored | PaidEntriesJsonLoadState::Loaded => Task::none(),
             PaidEntriesJsonLoadState::NotLoaded => {
                 if let Some(json_path) = self.config.paid_entries_json_path.as_ref() {
@@ -277,7 +357,23 @@ impl pages::IPage<PaidEntriesPageMessage> for PaidEntriesPage {
                     cosmic::Task::none()
                 }
             }
-        }
+        };
+
+        let fetch_crypto_prices_task = match (
+            self.config.coin_market_cap_api_key.clone(),
+            self.raw_json_data.clone(),
+        ) {
+            (Some(api_key), Some(json_data)) => {
+                let symbols = json_data
+                    .keys()
+                    .map(std::borrow::ToOwned::to_owned)
+                    .collect();
+                Self::load_crypto_prices(api_key, symbols)
+            }
+            _ => cosmic::Task::none(),
+        };
+
+        cosmic::Task::batch([load_paid_entries_task, fetch_crypto_prices_task])
     }
 
     fn dialog(&self) -> Option<cosmic::Element<PaidEntriesPageMessage>> {

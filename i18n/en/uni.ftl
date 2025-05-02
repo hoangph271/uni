@@ -16,4 +16,5 @@ pick-file = Pick file
 json-path = JSON path
 cmc-api-key = CoinMarketCap API Key
 error-loading-json-file = Loading JSON file failed
+error-fetching-crypto-prices = Fetching crypto prices failed
 btn-confirm = Confirm
